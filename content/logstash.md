@@ -1,0 +1,118 @@
+Title: Deploying Logstash
+Date: 2014-1-31 12:00
+Category: CSH
+Tags: personal-projects
+Slug: deploying-logstash
+Author: Derek Gonyeo
+Summary: What I did to get logstash running on CSH's systems
+
+[Logstash](ihttp://logstash.net/) is a program designed to collect, parse, and
+store logs from Linux machines so that you can go through them and try to make
+sense of them at a later date. I was tasked with deploying logstash on the
+various computers that comprise the 
+[Computer Science House's](http://csh.rit.edu/) systems. This will detail the
+steps I went through to do that.
+
+There's multiple parts to logstash, the shipper, indexer, and web interface.
+They all work together to collect, parse, and show you logs, and logs travel
+through them in the above order.
+
+The shipper is an instance of logstash that sits on a machine, and watches for 
+new logs to be made. Upon finding these new logs, it grabs them and sends a copy
+over to a [Redis](http://redis.io/) instance somewhere. For the purpose of 
+logstash, Redis is just a fancy queue. There will be a shipper running on every
+computer you want to be viewing logs from, all talking to the same Redis
+instace.
+
+Next the indexer (another instance of the same binary) takes these logs out of
+Redis at the other end of the queue, and saves them in to
+[Elasticsearch](http://www.elasticsearch.org/).
+
+Finally yet another instance of logstash sits on a machine, and serves up a web
+page containing [Kibana](http://www.elasticsearch.org/overview/kibana/) to view
+and process these logs.
+
+The first problem arises in that you get a .jar file from logstash's website,
+and are instructed to run it with different flags to get the different modes
+working. This is all fine and good to test out logstash, but we need something
+more akin to a service for this. Some quick googling had revealed these
+[init scripts](https://gist.github.com/jippi/1065761) set up to make the running
+of logstash more automated
+
+Side Note: This was a couple months ago, and I'm not 100% positive those are 
+the init scripts I used. Also I'm pretty sure those init scripts required some 
+hacking on to get working, but I'll leave that as an exercise for the reader.
+
+Anywho, the configs were stored in /etc/logstash/logstash-{shipper|indexer},
+the pid files stored in /var/run/logstash/logstash-{shipper|indexer|web}.pid,
+the logs were stored in /var/log/logstash/logstash-{shipper|indexer|web}.log,
+and the init scripts stored in
+/etc/init.d/logstash/logstash-{shipper|indexer|web}.
+
+Another problem presented itself when I learned that Kibana uses the
+Elasticsearch http apis to present the information to the user, and these are
+not in any way secure. I'll edit this once I figure out what I'm going to do
+about that.
+
+Here's the configs I used for logstash when deploying it on my personal machine:
+
+/etc/logstash/logstash-shipper
+
+    :::python
+    input {
+        stdin {
+            type => "stdin-type"
+        }
+        file {
+            type => "syslog"
+
+            path => [ "/var/log/*.log", "/var/log/syslog", "/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Logs" ]
+        }
+        file {
+            type => "messages"
+
+            path => [ "/var/log/messages"]
+        }
+    }
+
+    output {
+        stdout { codec => rubydebug }
+        redis { host => "127.0.0.1" data_type => "list" key => "logstash" password => tits123}
+    }
+
+/etc/logstash/logstash-indexer
+
+    :::python
+    input {
+      redis {
+        host => "127.0.0.1"
+        # these settings should match the output of the agent
+        data_type => "list"
+        key => "logstash"
+
+        # We use the 'json' codec here because we expect to read
+        # json events from redis.
+        codec => json
+        password => tits123
+      }
+    }
+
+    output {
+      stdout { debug => true }
+
+      elasticsearch {
+        host => "127.0.0.1"
+      }
+    }
+
+Also here's a tiny script I wrote to deploy logstash onto a machine. It's not
+the best, but might help provide insight to the steps necessary:
+
+    :::bash
+    mkdir -p /usr/local/bin/logstash /var/log/logstash /var/run/logstash /etc/logstash /etc/sysconfig
+    touch /var/log/logstash-shipper
+    wget https://download.elasticsearch.org/logstash/logstash/logstash-1.3.3-flatjar.jar -O /usr/local/bin/logstash/logstash.jar
+    scp -p derek@haruko.csh.rit.edu:/etc/init.d/logstash-shipper /etc/init.d/logstash-shipper
+    scp -p derek@haruko.csh.rit.edu:/etc/logstash/logstash-shipper.conf /etc/logstash/logstash-shipper.conf 
+    scp derek@haruko.csh.rit.edu:logstash-shipper /etc/sysconfig/logstash-shipper
+    chmod 640 /etc/sysconfig/logstash-shipper

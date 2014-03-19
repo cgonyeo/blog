@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Gonblag</title><link>http://blog.gonyeo.com/</link><description></description><atom:link href="http://blog.gonyeo.com/feeds/csh.rss.xml" rel="self"></atom:link><lastBuildDate>Fri, 31 Jan 2014 12:00:00 -0500</lastBuildDate><item><title>Deploying Logstash</title><link>http://blog.gonyeo.com/deploying-logstash.html</link><description>&lt;p&gt;&lt;a href="ihttp://logstash.net/"&gt;Logstash&lt;/a&gt; is a program designed to collect, parse, and
+store logs from Linux machines so that you can go through them and try to make
+sense of them at a later date. I was tasked with deploying logstash on the
+various computers that comprise the 
+&lt;a href="http://csh.rit.edu/"&gt;Computer Science House's&lt;/a&gt; systems. This will detail the
+steps I went through to do that.&lt;/p&gt;
+&lt;p&gt;There's multiple parts to logstash, the shipper, indexer, and web interface.
+They all work together to collect, parse, and show you logs, and logs travel
+through them in the above order.&lt;/p&gt;
+&lt;p&gt;The shipper is an instance of logstash that sits on a machine, and watches for 
+new logs to be made. Upon finding these new logs, it grabs them and sends a copy
+over to a &lt;a href="http://redis.io/"&gt;Redis&lt;/a&gt; instance somewhere. For the purpose of 
+logstash, Redis is just a fancy queue. There will be a shipper running on every
+computer you want to be viewing logs from, all talking to the same Redis
+instace.&lt;/p&gt;
+&lt;p&gt;Next the indexer (another instance of the same binary) takes these logs out of
+Redis at the other end of the queue, and saves them in to
+&lt;a href="http://www.elasticsearch.org/"&gt;Elasticsearch&lt;/a&gt;.&lt;/p&gt;
+&lt;p&gt;Finally yet another instance of logstash sits on a machine, and serves up a web
+page containing &lt;a href="http://www.elasticsearch.org/overview/kibana/"&gt;Kibana&lt;/a&gt; to view
+and process these logs.&lt;/p&gt;
+&lt;p&gt;The first problem arises in that you get a .jar file from logstash's website,
+and are instructed to run it with different flags to get the different modes
+working. This is all fine and good to test out logstash, but we need something
+more akin to a service for this. Some quick googling had revealed these
+&lt;a href="https://gist.github.com/jippi/1065761"&gt;init scripts&lt;/a&gt; set up to make the running
+of logstash more automated&lt;/p&gt;
+&lt;p&gt;Side Note: This was a couple months ago, and I'm not 100% positive those are 
+the init scripts I used. Also I'm pretty sure those init scripts required some 
+hacking on to get working, but I'll leave that as an exercise for the reader.&lt;/p&gt;
+&lt;p&gt;Anywho, the configs were stored in /etc/logstash/logstash-{shipper|indexer},
+the pid files stored in /var/run/logstash/logstash-{shipper|indexer|web}.pid,
+the logs were stored in /var/log/logstash/logstash-{shipper|indexer|web}.log,
+and the init scripts stored in
+/etc/init.d/logstash/logstash-{shipper|indexer|web}.&lt;/p&gt;
+&lt;p&gt;Another problem presented itself when I learned that Kibana uses the
+Elasticsearch http apis to present the information to the user, and these are
+not in any way secure. I'll edit this once I figure out what I'm going to do
+about that.&lt;/p&gt;
+&lt;p&gt;Here's the configs I used for logstash when deploying it on my personal machine:&lt;/p&gt;
+&lt;p&gt;/etc/logstash/logstash-shipper&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="nb"&gt;input&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="n"&gt;stdin&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="nb"&gt;type&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;stdin-type&amp;quot;&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="nb"&gt;file&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="nb"&gt;type&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;syslog&amp;quot;&lt;/span&gt;
+
+        &lt;span class="n"&gt;path&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;/var/log/*.log&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;/var/log/syslog&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Logs&amp;quot;&lt;/span&gt; &lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="nb"&gt;file&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+        &lt;span class="nb"&gt;type&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;messages&amp;quot;&lt;/span&gt;
+
+        &lt;span class="n"&gt;path&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="p"&gt;[&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;/var/log/messages&amp;quot;&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;
+    &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+
+&lt;span class="n"&gt;output&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="n"&gt;stdout&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="n"&gt;codec&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;rubydebug&lt;/span&gt; &lt;span class="p"&gt;}&lt;/span&gt;
+    &lt;span class="n"&gt;redis&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="n"&gt;host&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;127.0.0.1&amp;quot;&lt;/span&gt; &lt;span class="n"&gt;data_type&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;list&amp;quot;&lt;/span&gt; &lt;span class="n"&gt;key&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;logstash&amp;quot;&lt;/span&gt; &lt;span class="n"&gt;password&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;tits123&lt;/span&gt;&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;/etc/logstash/logstash-indexer&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;&lt;span class="nb"&gt;input&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+  &lt;span class="n"&gt;redis&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="n"&gt;host&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;127.0.0.1&amp;quot;&lt;/span&gt;
+    &lt;span class="c"&gt;# these settings should match the output of the agent&lt;/span&gt;
+    &lt;span class="n"&gt;data_type&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;list&amp;quot;&lt;/span&gt;
+    &lt;span class="n"&gt;key&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;logstash&amp;quot;&lt;/span&gt;
+
+    &lt;span class="c"&gt;# We use the &amp;#39;json&amp;#39; codec here because we expect to read&lt;/span&gt;
+    &lt;span class="c"&gt;# json events from redis.&lt;/span&gt;
+    &lt;span class="n"&gt;codec&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;json&lt;/span&gt;
+    &lt;span class="n"&gt;password&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;tits123&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+
+&lt;span class="n"&gt;output&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+  &lt;span class="n"&gt;stdout&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="n"&gt;debug&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;true&lt;/span&gt; &lt;span class="p"&gt;}&lt;/span&gt;
+
+  &lt;span class="n"&gt;elasticsearch&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt;
+    &lt;span class="n"&gt;host&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;&amp;quot;127.0.0.1&amp;quot;&lt;/span&gt;
+  &lt;span class="p"&gt;}&lt;/span&gt;
+&lt;span class="p"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/div&gt;
+
+
+&lt;p&gt;Also here's a tiny script I wrote to deploy logstash onto a machine. It's not
+the best, but might help provide insight to the steps necessary:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre&gt;mkdir -p /usr/local/bin/logstash /var/log/logstash /var/run/logstash /etc/logstash /etc/sysconfig
+touch /var/log/logstash-shipper
+wget https://download.elasticsearch.org/logstash/logstash/logstash-1.3.3-flatjar.jar -O /usr/local/bin/logstash/logstash.jar
+scp -p derek@haruko.csh.rit.edu:/etc/init.d/logstash-shipper /etc/init.d/logstash-shipper
+scp -p derek@haruko.csh.rit.edu:/etc/logstash/logstash-shipper.conf /etc/logstash/logstash-shipper.conf 
+scp derek@haruko.csh.rit.edu:logstash-shipper /etc/sysconfig/logstash-shipper
+chmod 640 /etc/sysconfig/logstash-shipper
+&lt;/pre&gt;&lt;/div&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Derek Gonyeo</dc:creator><pubDate>Fri, 31 Jan 2014 12:00:00 -0500</pubDate><guid>tag:blog.gonyeo.com,2014-01-31:deploying-logstash.html</guid><category>personal-projects</category></item></channel></rss>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Gonblag</title>
+    <meta name="description" content="">
+    <meta name="author" content="Derek Gonyeo">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Le HTML5 shim, for IE6-8 support of HTML elements -->
+    <!--[if lt IE 9]>
+    <script src="http://blog.gonyeo.com/theme/html5.js"></script>
+    <![endif]-->
+
+    <!-- Le styles -->
+    <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.1.1/css/bootstrap.no-icons.min.css" rel="stylesheet">
+    <link href="http://blog.gonyeo.com/theme/local.css" rel="stylesheet">
+    <link href="http://blog.gonyeo.com/theme/pygments.css" rel="stylesheet">
+    <link href="http://blog.gonyeo.com/theme/font-awesome.css" rel="stylesheet">
+    <link href='http://fonts.googleapis.com/css?family=Gudea:400,400italic|Alegreya+SC' rel='stylesheet' type='text/css'>
+</head>
+
+<body>
+<header class="blog-header">
+  <div class="container">
+    <div class="row-fluid">
+      <div class="span9">
+	<a href="http://blog.gonyeo.com" class="brand">Gonblag</a>
+      </div>
+
+      <div class="span3" id="blog-nav">
+	<ul class="nav nav-pills pull-right">
+            <li><a href="http://blog.gonyeo.com/pages/about-me.html">About Me</a></li>
+	    <li >
+	      <a href="http://blog.gonyeo.com/category/csh.html ">CSH</a>
+	    <li  class="active" >
+	      <a href="http://blog.gonyeo.com/category/hfoss.html ">HFOSS</a>
+	    <li >
+	      <a href="http://blog.gonyeo.com/category/non-technical.html ">Non-Technical</a>
+	    <li >
+	      <a href="http://blog.gonyeo.com/category/odd.html ">ODD</a>
+	</ul>
+      </div>
+    </div> <!-- End of fluid row-->
+  </div>   <!-- End of Container-->
+</header>
+    
+<div class="container">
+    <div class="content">
+    <div class="row-fluid">
+
+        <div class="span10">
+    <div class='article'>
+      <div class="row-fluid">
+           <div class="content-title span9">
+             <h1>FFTs in ODD</h1b>
+           </div>
+      </div>
+    <div class="row-fluid">
+      <div class="span2">
+<p>Mon 03 March 2014 </p>
+
+<p style="text-align: left;">
+Filed under <a href="http://blog.gonyeo.com/category/hfoss.html">HFOSS</a>
+</p>
+<p style="text-align: left;">
+ 
+    Tags <a href="http://blog.gonyeo.com/tag/hfoss.html">hfoss</a> </p>
+<p>
+</p>
+      </div>
+      
+      <div class="span8">
+	<p>So in <a href="http://blog.gonyeo.com/category/odd.html">Project ODD</a> I handle sound. I 
+use an audio splitter to take any sound going to my speakers, and pass it in to
+a USB audio dongle I have on the Raspberry Pi that powers the project. The Pi
+then generates some animations based upon the audio.</p>
+<p>The most simple of these animations turns on all of the LEDs and varies their
+brightness with the volume of the sound. This is a cool proof of concept, but
+lacks the pretty visualizations I'm aiming for, as it's not very easy to see
+subtle variations in the volume level with this strategy.</p>
+<p>The next attempt made a bar, who's length and brightness varies with the volume
+level (volume again because getting that is easy). Anchored to one end, the LEDs
+will light up for a certain length towards the other end, and as the music gets
+louder or quieter the number of LEDs would respectively grow or shrink. This
+made a cool pulsing effect, that's interesting to look at and results in a
+pulsing light cast on things around it. When combined with the "Set All"
+animation as a weak background, it can be quite enjoyable.</p>
+<p>From there I went on to use FFTs to break down the audio coming in, and
+calculate which frequencies are present in the music. The goal being I can
+display a spectograph across the LEDs, mapping one end of the strip to low
+frequencies and as you move down the strip assigning the LEDs to higher
+frequencies. This results in an animation wherein you can clearly see the
+difference between the bass drum and vocals, and other sounds; something the
+previous attempts fail to do. It also still results in the pulsing light on the
+surrounding walls and ceiling. </p>
+<p>It took some time to have these animations workable; I had some conceptual
+problems not understanding how to process sound. At first, I attempted to just
+sum up all the values to get the sound, but I later realized half of these
+values were negative. Each sample was a float, between -1 and 1. I them summed
+up the absolute value of each sample, and was able to accurately get the average
+sound across the sound buffer. </p>
+<p>Displaying this though, it didn't appear to move as well as I was expecting.
+Upon conversing with another member of the Computer Science House, I learned
+(remembered) that sound was logarithmic. I then scaled this volume
+logarithmically and got a nice looking animation.</p>
+<p>The next step was using the FFTs; if I could understand what frequencies were in
+my sound buffer I would have more information to display in an animation. After
+reading a good bit about FFTs online I wasn't sure how to tweak it however.</p>
+<p>The various places across the internet I found can explain it much better than I
+can, and I suggest googling around if you're interested in this stuff, but
+pretty much what I ended up doing was having a buffer of 1024, not padding my
+array with 0s, to fill in the buffer of answers I take the square root of the
+sum of the sqaures (Pythagorean Theorem) from the two buffers I get as output.
+The values I also get very much favor lower frequencies. While probably
+accurate, this isn't what I want to show for the animation, so I apply an
+exponential (going to try out a logarithmic scale soon, because apparently
+that's what I actually want) to the sounds to make the higher frequencies
+brighter. I also only look at the frequencies between 0 Hz and 1875 Hz (most
+probably gonna start including some frequencies higher than that soon).</p>
+<p>All in all it's been fun playing around with the sound to see what looks good,
+if not a slow process. I'm excited for when I can build a larger display to see
+what having a higher resolutions will look like.</p>
+	<hr />
+      </div>
+    </div>
+    <div class="span10">
+      <h3>Comments</h3>
+    
+<div id="disqus_thread"></div>
+<script type="text/javascript">
+    var disqus_shortname = 'gonblag'; 
+
+    (function() {
+        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+        dsq.src = 'http://' + disqus_shortname + '.disqus.com/embed.js';
+        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+</script>
+<noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+    </div>  
+    </div>
+        </div>
+        
+        
+    </div>     </div> </div>
+
+<!--footer-->
+<div class="container">
+  <div class="well" style="background-color: #E9EFF6">
+    <div id="blog-footer">
+      <div class="row-fluid">
+	<div class="social span2" align="center" id="socialist">
+	  <ul class="nav nav-list">
+	    <li class="nav-header">
+	      Social
+	    </li>
+	    <li><a href="https://github.com/dgonyeo"><i class="icon-Github" style="color: #1f334b"></i>Github</a></li>
+	    <li><a href="http://www.linkedin.com/pub/derek-gonyeo/41/7a6/412/"><i class="icon-LinkedIn" style="color: #1f334b"></i>LinkedIn</a></li>
+            <a href="mailto:dgonyeo@csh.rit.edu"><i class="icon-envelope" style="color: #1f334b" ></i> email</a>
+
+	  </ul>
+	</div>
+<div class="span8" id="colophon">
+  <h2 align="center">Gonblag: Gonyeo's Blog</h2>
+  <p align="justify"> Hi! I'm Derek! This is my blag! If you want to contact me to let me know how rad my blag is, there's some links to the left here. I'm also on freenode as dgonyeo in #rit-foss, if IRC is your thing. </p>
+</div>
+	<div class="site-nav span2" align="center">
+          <ul class="nav nav-list" id="site-links">
+            <li class="nav-header"> 
+              Site
+            </li>
+            <li><a href="http://blog.gonyeo.com"><i class="icon-home" style="color: #1f334b">
+                </i>Home</a></li>
+            <li><a href="http://blog.gonyeo.com/archives.html"><i class="icon-list" style="color: #1f334b">
+                </i>Archives</a></li>
+	    <li><a href="http://blog.gonyeo.com/tags.html"><i class="icon-tags" style="color: #1f334b">
+                </i>Tags</a></li>
+	    
+	    <li> <a href="http://blog.gonyeo.com/feeds/all.rss.xml" rel="alternate">
+                <i class="icon-rss" style="color: #1f334b"></i>
+                RSS Feed</a></li>
+            <li><a href="http://blog.gonyeo.com/" rel="alternate">
+                <i class="icon-rss-sign" style="color: #1f334b"></i>
+                Atom Feed</a></li>
+	  </ul>
+
+        </div>
+
+      </div> <!--end of fluid row-->
+    </div> <!--end of blog-footer-->
+    <hr />
+    <p align="center"><a href="http://blog.gonyeo.com">Gonblag</a>
+      &copy; Derek Gonyeo
+    Powered by <a href="github.com/getpelican/pelican">Pelican</a> and
+        <a href="https://twitter.github.com/bootstrap">Twitter Bootstrap</a>. 
+        Icons by <a href="http://fortawesome.github.com/Font-Awesome">Font Awesome</a> and 
+        <a href="http://gregoryloucas.github.com/Font-Awesome-More">Font Awesome More</a></p>
+
+  </div> <!--end of well -->
+</div> <!--end of container -->
+
+<!--/footer-->
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+<script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.2/js/bootstrap.min.js"></script>
+
+
+<script>var _gaq=[['_setAccount','UA-47604400-1'],['_trackPageview']];(function(d,t){var g=d.createElement(t),s=d.getElementsByTagName(t)[0];g.src='//www.google-analytics.com/ga.js';s.parentNode.insertBefore(g,s)}(document,'script'))</script>
+
+</body>
+</html>
