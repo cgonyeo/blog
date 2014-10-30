@@ -9,7 +9,7 @@ House](http://csh.rit.edu/) at RIT, and am currently its financial director
 
 I have professional experience as a software engineer through two co-ops, one
 doing iOS development at [Stormfrog](http://www.stormfrog.com/) and one working
-on a notification management tool for operations at
+on a notification management tool for systems administrators at
 [Hudl](http://www.hudl.com/).
 
 I also have experience through personal projects in basic circuit design,
