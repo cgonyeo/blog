@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Gonblag</title><link>http://blog.gonyeo.com/</link><description></description><atom:link href="http://blog.gonyeo.com/feeds/non-technical.rss.xml" rel="self"></atom:link><lastBuildDate>Wed, 29 Jan 2014 16:00:00 -0500</lastBuildDate><item><title>This Is My Blog</title><link>http://blog.gonyeo.com/this-is-my-blog.html</link><description>&lt;p&gt;Hi! I'm Derek. I like to do technical things, and I'm going to use this blog as 
-a means of documenting what I've done. This is both so I can remember how I've 
-done things, and so maybe someday one of my ramblings will help someone with 
-some problem they're solving. &lt;/p&gt;</description><dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Derek Gonyeo</dc:creator><pubDate>Wed, 29 Jan 2014 16:00:00 -0500</pubDate><guid>tag:blog.gonyeo.com,2014-01-29:this-is-my-blog.html</guid><category>non-technical</category></item></channel></rss>

@@ -1,0 +1,32 @@
+---
+title: Switch to Hakyll
+tags: Haskell
+---
+
+I just finished rewriting my blog to use [hakyll](http://jaspervdj.be/hakyll),
+which was a pretty fun adventure. Hakyll is a static site generator written in
+Haskell, that uses [pandoc](http://johnmacfarlane.net/pandoc/) to parse files.
+
+Because pandoc is used, the posts on my blog can be written in many different
+formats like markdown, restructuredtext, html, and even tex.
+
+The basics on using it are:
+
+- Install hakyll via cabal
+- Run the binary that was build (default location is
+  `~/.cabal/bin/hakyll-init`), and give it a new folder to make a site in. So
+  for example: `hakyll-init my-site`
+- Configure `site.hs`. This file contains all the configuration for what html
+  files to generate, from what templates, with plenty of bells and whistles.
+- Modify the templates, pages, etc. Write some posts in `posts/`.
+- Build the binary that will generate your site: `ghc --make -threaded site.hs`.
+- Run the binary. Some useful arguments:
+    - `build`: Generates the site. Located in `_site/`.
+    - `clean`: Deletes `_site/` and `_cache`, which can be regenerated with
+      `build`.
+    - `rebuild`: Same as running `clean` and then `build`.
+    - `watch`: Build the site, and serve the files up at http://localhost:8000.
+      Will watch for changes to the files, and regenerate the site on changes.
+
+For more in depth tutorials and documentation, check out
+[http://jaspervdj.be/hakyll/](http://jaspervdj.be/hakyll/).
