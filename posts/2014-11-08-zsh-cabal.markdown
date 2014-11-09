@@ -1,0 +1,60 @@
+---
+title: ZSH and Cabal
+tags: Linux
+---
+
+I just spent a half hour messing with my `.zshrc` to make it play nicely with
+cabal sandboxes, and figured I'd dump the config changes here for anyone
+interested. My .zshrc in its entirety is [on my
+github](https://github.com/dgonyeo/dotfiles).
+
+The behavior I added prefixes my prompt with a light green "cabal" when I'm in
+a sandbox, and modifies my path to include `./.cabal-sandbox/bin` when I'm in a
+sandbox and `~/.cabal/bin` when I'm not. It does this by checking for the
+existence of `./cabal.sandbox.config` whenever I change directories. Not the
+most efficient thing, but I doubt the extra cycles spent checking if a file
+exists will impact much.
+
+To use, copy/paste the following blob into your config, and change the
+`PROMPT=` line to whatever you want your prompt to be. It just needs to include
+`$(sandbox_prompt)` in it to be able to add the "cabal" to the prompt. Also if
+you'd prefer different text just change the `export __CABAL_SANDBOX="%{$fg_bold[green]%}cabal %{$reset_color%}"`
+line towards the top.
+
+```zsh
+# Cabal sandbox stuff
+ typeset -ga chpwd_functions
+ function update_cabal_sandbox_info () {
+     if [[ -a cabal.sandbox.config ]]
+     then              
+         export __CABAL_SANDBOX="%{$fg_bold[green]%}cabal %{$reset_color%}"
+     else              
+         export __CABAL_SANDBOX=""
+     fi                
+ }                     
+                       
+ # Prompt              
+ function set_prompt() {
+     PROMPT="%(?..%{$fg_bold[red]%}%?%{$reset_color%} )$__CABAL_SANDBOX%n@%m %~> "
+ }                  
+                       
+ # Dicking with my path for cabal sandboxes
+ export PATH2=$PATH 
+ function cabal_bin_path() {
+     if [ -z $__CABAL_SANDBOX ]
+     then           
+         export PATH=$PATH2:~/.cabal/bin
+     else           
+         export PATH=$PATH2:./.cabal-sandbox/bin
+     fi             
+ }                     
+                       
+ # Functions to run when the user cds
+ chpwd_functions+='update_prompt_chpwd'
+ update_prompt_chpwd () {
+     update_cabal_sandbox_info
+     cabal_bin_path 
+     set_prompt     
+ }                     
+ update_prompt_chpwd
+```

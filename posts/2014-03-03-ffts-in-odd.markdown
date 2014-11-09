@@ -1,6 +1,6 @@
 ---
 title: FFTs in ODD
-tags: ODD
+tags: Misc
 ---
 
 So in [Project ODD](http://blog.gonyeo.com/category/odd.html) I handle sound. I 

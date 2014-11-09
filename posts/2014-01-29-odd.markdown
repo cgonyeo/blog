@@ -1,6 +1,6 @@
 ---
 title: ODD
-tags: ODD
+tags: Projects
 ---
 
 So I've been working on this one project on and off for about a year now.

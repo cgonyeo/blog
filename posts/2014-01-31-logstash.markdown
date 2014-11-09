@@ -3,6 +3,9 @@ title: Deploying Logstash
 tags: Linux
 ---
 
+_This is out of date, I'll be writing up how to correctly do this in the near
+future_
+
 [Logstash](ihttp://logstash.net/) is a program designed to collect, parse, and
 store logs from Linux machines so that you can go through them and try to make
 sense of them at a later date. I was tasked with deploying logstash on the
@@ -90,7 +93,7 @@ Here's the configs I used for logstash when deploying it on my personal machine:
         # We use the 'json' codec here because we expect to read
         # json events from redis.
         codec => json
-        password => tits123
+        password => s3kr1tp4ssw0rd
       }
     }
 

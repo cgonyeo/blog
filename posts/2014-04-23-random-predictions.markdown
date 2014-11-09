@@ -1,6 +1,6 @@
 ---
 title: Predicting Random Numbers
-tags: C, ODD
+tags: C
 ---
 
 Animations in ODD have storage. When called, one of the parameters received is a

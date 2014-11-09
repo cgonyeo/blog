@@ -1,6 +1,6 @@
 ---
 title: Using Libjansson
-tags: C, ODD
+tags: C
 ---
 
 tl;dr: I go through a basic example of using libjansson to parse JSON in C. This

@@ -1,6 +1,6 @@
 ---
 title: Imagine RIT
-tags: ODD
+tags: Misc
 ---
 
 Project ODD is finally along far enough to show to other people, so I'm going to
