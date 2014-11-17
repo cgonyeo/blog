@@ -18,8 +18,12 @@ exists will impact much.
 To use, copy/paste the following blob into your config, and change the
 `PROMPT=` line to whatever you want your prompt to be. It just needs to include
 `$(sandbox_prompt)` in it to be able to add the "cabal" to the prompt. Also if
-you'd prefer different text just change the `export __CABAL_SANDBOX="%{$fg_bold[green]%}cabal %{$reset_color%}"`
-line towards the top.
+you'd prefer different text just change the `export
+__CABAL_SANDBOX="%{$fg_bold[green]%}cabal %{$reset_color%}"` line towards the
+top.
+
+Make sure you log out and back in (or source `.zprofile`) when you do this, or
+your `PATH` will all of a sudden include _only_ cabal's bin.
 
 ```zsh
 # Cabal sandbox stuff
@@ -39,7 +43,6 @@ line towards the top.
  }                  
                        
  # Dicking with my path for cabal sandboxes
- export PATH2=$PATH 
  function cabal_bin_path() {
      if [ -z $__CABAL_SANDBOX ]
      then           
@@ -57,4 +60,10 @@ line towards the top.
      set_prompt     
  }                     
  update_prompt_chpwd
+```
+
+And the following needs to go in your `.zprofile`
+
+```zsh
+ export PATH2=$PATH 
 ```
