@@ -48,7 +48,7 @@ your `PATH` will all of a sudden include _only_ cabal's bin.
      then           
          export PATH=$PATH2:~/.cabal/bin
      else           
-         export PATH=$PATH2:./.cabal-sandbox/bin
+         export PATH=$PATH2:./.cabal-sandbox/bin:~/.cabal/bin
      fi             
  }                     
                        
