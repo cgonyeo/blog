@@ -2,7 +2,7 @@ My blog. Uses Hakyll. To build:
 
 ```
 cabal sandbox init
-cabal install hakyll
+cabal install --only-dependencies
 cabal build
 ./dist/build/blog/blog build
 ```

@@ -1,0 +1,84 @@
+---
+title: Gohbase Part 0
+tags: Go
+---
+
+A month and a half ago I started working at
+[CloudFlare](https://www.cloudflare.com/) as an intern. I'm on the Data Team,
+and was tasked with creating a client for HBase written in Go. If this sounds a
+little daunting for an intern project don't worry, I've had the assistance of
+[Benoit Sigoure](https://github.com/tsuna) and [Sam
+Curley](https://github.com/CurleySamuel). Benoit is actually the author of
+[asynchbase](https://github.com/OpenTSDB/asynchbase), a Java client for HBase,
+so he has a pretty solid grasp on how the innards of this thing are supposed to
+work.
+
+This is the first of what will become a series of blog posts on my experiences
+working on the project. In this entry, I'm going to talk about
+[gerrit](https://www.gerritcodereview.com/), the tool that we use to propose new
+commits and do code reviews.
+
+We found a hosted version of the tool at [gerrithub.io](http://gerrithub.io/),
+and have been using that. We didn't want to be responsible for hosting our own
+solution, as having a 3rd party hosting it would probably result in a more
+reliable experience, which would potentially lower the bar for anyone else who
+wanted to jump in and contribute to the project.
+
+When it comes to development in past jobs, I've always kept to the following
+work flow:
+
+- Make a new branch in the project
+- Make whatever changes I want to with a handful of commits (pushing each commit
+  as it gets made)
+- Pull from master into my branch and resolve any merge conflicts
+- Make a pull request against master from my branch
+- As the changes get reviewed, potentially add commits to my pull request to fix
+  any problems that get spotted
+- My branch gets merged into master
+
+From my understanding this is incredibly common. The benefits to this pattern
+are that many people can be working on the same project in many different
+states, and people can easily checkout each others' branches if they want to
+collaborate on a feature.
+
+This is not the work flow we've been following with gohbase. We've been
+keeping to something closer to the following:
+
+- Make whatever changes I want to with 1 or more commits locally in the master
+  branch
+- Once happy with the set of changes I've made, potentially squash multiple
+  commits into a singular one that implements the changes
+- Pull rebase from master, and resolve any conflicts
+- Push the commit to gerrithub for review (note that this doesn't push it to the
+  master branch)
+- Fix whatever problems the review uncovers by modifying the commits and pushing
+  new versions of them to gerrithub
+- My commit(s) get rebased onto master
+
+The biggest distinction from what I was used to before this project is that
+reviews happen on a per-commit level, instead of on a set of commits. If I push
+three commits to gerrithub, that shows up as three separate things to review.
+Gerrit makes it easy to view different versions of a commit, and what's changed
+between them, for the purposes of seeing how the commit changes throughout the
+review process, and it also makes it easy to fetch and checkout proposed commits
+from other people, so if you wish to contribute to someone else's changes it's
+easy to do so.
+
+One clear benefit to this in my opinion is that it results in one good commit,
+instead of having one commit that implements the changes, a second commit
+because there's a typo in a comment, a third commit because you forgot to run
+the linter, and a fourth commit because you forgot to run the tests and the
+sixth one failed.
+
+There is a slight downside in that if the change you want to implement is
+large enough to make sense to have multiple commits, when it comes time to
+review them the review will happen individually for each commit. We've been
+trying to keep each commit reasonably small (each commit does only one thing),
+and so far this hasn't been an issue for me. Everything I've wanted to implement
+is a single new feature or bug fix in the project, and thus makes sense to have
+as a single commit.
+
+At this point I do think I prefer the gerrit work flow. I've gotten pretty good
+at editing past commits (only things that haven't been merged!), and this way
+you don't get to see in the project's commit history the fact that I forgot to
+run the linter before putting my commit up for review.
