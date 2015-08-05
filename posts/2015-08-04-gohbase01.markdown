@@ -1,0 +1,57 @@
+---
+title: Gohbase Part 1 - What's an HBase
+tags: Go
+---
+
+My best description of what HBase is goes roughly as follows. Take a freshman in
+college majoring in Computer Science, and ask them to design the API for a
+database. The API needs to allow users to retrieve data, put new data in the
+database, and remove data. Take that API they make, and then make it work in a
+distributed fashion across many machines, capable of scaling to the point where
+it can handle petabytes of data.
+
+When you interact with HBase, you've got a couple basic operations:
+
+- Get
+- Put
+- Scan
+- Delete
+- Append
+- Increment
+
+Get and Scan are for getting data out of HBase. Get will return a single row,
+and Scan will return many rows based on the range you're looking in and the
+filters you specify. Put will enter a single new row into the database. Delete
+will remove a row, Append will append a value to the contents of a specified
+column in a row, and Increment will atomically increment a value in a specified
+column. These operations are performed on tables, which can be used to
+separate different types of data
+
+Each row in HBase also has columns. The short version of how these work is that
+each row has an enforced set of columns, and each column has an unenforced set
+of sub-columns. By "enforced" I mean that the names of the columns need to be
+specified when the table is created, and attempting to put data in non-existent
+columns will fail. The top level column is called the "column family", and the
+sub-columns are called the "column qualifiers".
+
+When you use the HBase library, what's happening under the hood is a little more
+complicated than the API might suggest. HBase splits up each table into
+sections, which it calls regions, and assigns them to be handled by different
+region servers. So for a given table with two regions, all requests to rows with
+a key less than a specific value will go to one region server, and all requests
+to rows with a key greater than that value will go to a different region server.
+
+In order for the HBase library to send a request to HBase, it needs to know what
+region that request falls in. For this, HBase has the meta table, which is a
+table in HBase that contains the various regions and what region servers are
+handling which regions. A client that just started up won't know which region
+server is handling the meta table however, and it obviously can't use the meta
+table to find the meta table, so HBase stores the location of the meta table in
+ZooKeeper.
+
+HBase also needs to handle when a machine fails, or when a region gets too large
+to be stored on a single machine, so sometimes a region the HBase library wants
+to access will be unavailable. When a region goes offline, the client will
+periodically look up where it is in the meta table and attempt to connect to it
+until either it succeeds or the deadline for the operation (if there is one) is
+reached.
