@@ -1,0 +1,94 @@
+---
+title: Gohbase Part 2 - Life of a Request
+tags: Go
+---
+
+To perform an operation with `gohbase`, there are currently two steps. Step 1 is
+to create the RPC via the `gohbase/hrpc` package. Step two is to send the RPC
+via the `SendRPC` function. This will produce a result from HBase (or an error).
+
+Here's an example of a Get request.
+
+```go
+get, err := hrpc.NewGetStr(context.Background(), table, key, hrpc.Families(headers))
+if err != nil {
+    t.Fatalf("Failed to create Get request: %s", err)
+}
+rsp, err := c.SendRPC(get)
+if err != nil {
+    t.Errorf("Get returned an error: %v", err)
+}
+for _, c := rsp.Cells {
+    fmt.Printf("%v\n", c.Value
+}
+```
+
+In the first part of this, `hrpc.NewGetStr` simply allocates a struct and fills
+in the appropriate fields with what table, key, and columns you want to get from
+HBase. This doesn't involve any network traffic.
+
+Once this struct has been allocated, it can be passed to `SendRPC` on a valid
+`Client` from the `gohbase` package. This involves a lot of network traffic.
+
+The first thing that happens here is `gohbase` checks if it's aware of the
+region you're attempting to access. If it's seen this region before, it checks
+if the region is marked as available. A region will be marked as unavailable if
+there's no valid connection to the region server hosting the region. If the
+region is unavailable, it'll wait for the region to become available.
+
+If the `gohbase` client is unaware of the requested region, it will send a Get
+request to the meta table to get the location of its region server. On the first
+RPC to be sent the location of the meta table is looked up in ZooKeeper and a
+connection is established before this happens. Once the location is known it
+checks the cache for an existing connection to the server, and if one isn't
+found it attempts to establish a connection and send a hello message. If this
+fails it sleeps for a moment and then tries looking up the region server's
+location again. If the connection succeeded, the region is marked as available.
+
+Once the region is available the region client (a struct from `gohbase/region`)
+is fetched from the cache, and the RPC is queued in the region client. The queue
+it gets put into has a configurable size and a configurable timeout. Once the
+queue grows past the size, or the timeout is reached, the queue is flushed.
+
+When the queue is flushed, each RPC in it is serialized and written over the
+network to the HBase server. The messages are serialized as protobuf messages.
+I'm currently working on batching multiple RPCs together into single requests,
+to reduce the number of messages that need to be written to and from the server,
+but this doesn't work yet.
+
+When messages are written out, they're each assigned an ID. This is just an
+integer that starts at 0 and is incremented for each message. Once HBase has
+completed the request, it writes a message over the network back to the client.
+This protobuf message is deserialized, and then matched up against the RPC we
+sent based on the ID of the reply (it'll match what was set on the request
+message).
+
+If there was no error, or it was an error that the client doesn't know how to
+handle, the message and any possible error are returned from the `SendRPC`
+function that was originally called and the RPC is complete.
+
+There are two kinds of errors that the region client can encounter that
+`gohbase` will handle, recoverable and unrecoverable errors. The terminology is
+referring to whether or not the region client can recover from the error.
+
+If a recoverable error was encountered, `gohbase` will mark the region the error
+came from as unavailable, and remove the link from that region to the region
+client. The region will be looked up in the meta table again, a new connection
+established to its location (if it's changed), and the RPC will be resent.
+
+If an unrecoverable error was encountered, the region client is considered dead.
+All regions using the region client are marked as unavailable, and each region
+is looked up in the meta table again, with each region attempting to make new
+connections to the region server (they'll share connections if they still point
+to the same place). Once a new connection is established, the RPC is resent.
+
+When programming this process, we were careful to make sure that no expensive
+operations happen in the most frequently followed code paths. For example,
+barring network partitions and unknown regions, no new goroutines are started
+when `SendRPC` is called.
+
+The user facing API is also rather rough currently, as I imagine most people
+don't appreciate using a `map[string]map[string][]bytes`. I've introduced a
+reflection-based call for all the mutate operations which will hopefully help,
+but the API is still very unfinished. As this moves further along and gets
+tested more on full HBase deployments hopefully it can be refined.
